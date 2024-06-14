@@ -183,7 +183,7 @@ class Group {
     this._students = this._students.filter(s => s !== student);
   }
 
-  showPerformance() {
+  showPerformance(): Student [] {
     const sortedStudents = this._students.sort((a, b) => b.getPerformanceRating() - a.getPerformanceRating());
     return sortedStudents;
   }
@@ -224,7 +224,7 @@ class Student {
     this._visits[lesson] = present;
   }
 
-  getPerformanceRating() {
+  getPerformanceRating(): number {
     const gradeValues = Object.values(this._grades);
 
     if (!gradeValues.length) return 0;
