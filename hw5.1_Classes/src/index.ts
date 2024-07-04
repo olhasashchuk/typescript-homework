@@ -14,6 +14,12 @@ abstract class Shape {
   abstract calculateArea(): number;
 }
 
+
+interface IPrint {
+  print(): void;
+}
+
+
 class Circle extends Shape {
 
   constructor(
@@ -28,7 +34,7 @@ class Circle extends Shape {
   }
 }
 
-class Rectangle extends Shape {
+class Rectangle extends Shape implements IPrint {
   constructor(
     color: string, 
     name: string, 
@@ -42,11 +48,11 @@ class Rectangle extends Shape {
   }
 
   print(): void {
-    console.log("The area of rectangle is calculated by th formula: width * height");
+    console.log("The area of rectangle is calculated by the formula: width * height");
   }
 }
 
-class Square extends Shape {
+class Square extends Shape implements IPrint {
   constructor(
     color: string, 
     name: string, 
@@ -58,9 +64,8 @@ class Square extends Shape {
     return Math.sqrt(this.width);
   }
 
-
   print(): void {
-    console.log("The area of square is calculated by th formula: side * side");
+    console.log("The area of square is calculated by the formula: side * side");
   }
 }
 

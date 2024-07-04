@@ -1,5 +1,6 @@
 // 1. Створіть інтерфейс, який описує структуру об'єкта, що представляє калькулятор. Калькулятор повинен мати методи для виконання арифметичних операцій: додавання, віднімання, множення та ділення. Потім створіть функцію calculate, яка приймає об'єкт цього типу та виконує операцію і повертає результат.
 
+
 interface ICalculator {
   num1: number;
   num2: number;
@@ -54,7 +55,7 @@ class Calculator1 implements ICalculator {
   }
 }
 
-const calc1: ICalculator = new Calculator1(6, 2); // 
+const calc1: ICalculator = new Calculator1(6, 2);
 const calc2: ICalculator = new Calculator1(12, 2);
 
 console.log(calculate(calc1, "add")); 
