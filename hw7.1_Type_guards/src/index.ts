@@ -12,6 +12,11 @@
 
 // Попередньо найняті співробітники отримують зарплату за допомогою зовнішніх оплат, Співробітники (тільки активні) - за допомогою внутрішніх.
 
+enum EmployeeStatus {
+  Active = 'active',
+  Inactive = 'inactive',
+  UnpaidLeave = 'unpaid leave'
+}
 interface IPreHiredEmployees {
   firstName: string;
   lastName: string;
@@ -24,7 +29,7 @@ interface IEmployees {
   lastName: string;
   salary: number;
   bankAccount: number;
-  status: 'active' | 'inactive' | 'unpaid leave';
+  status: EmployeeStatus;
   department: IDepartment;
 };
 
@@ -71,7 +76,7 @@ class Employees implements IEmployees {
     public lastName: string,
     public salary: number,
     public bankAccount: number,
-    public status: 'active' | 'inactive' | 'unpaid leave',
+    public status: EmployeeStatus,
     public department: IDepartment
   ){}
 };
@@ -108,7 +113,7 @@ class Department implements IDepartment {
       preHiredEmployee.lastName,
       preHiredEmployee.salary,
       preHiredEmployee.bankAccount,
-      'active',
+      EmployeeStatus.Active,
       this
     )
     this.addNewEmployee(newEmployee);
