@@ -6,76 +6,137 @@
 // Окремо необхідно розширити поведінку списку та додати можливість пошуку нотатка за ім'ям або змістом.
 // Також окремо необхідно розширити список можливістю сортування нотаток за статусом або часом створення.
 
+type Uuid = number;
+
 enum StatusTodoListEnum {
   New = 'NEW',
   IsPerformed = 'IS PERFORMED',
   Executed = 'EXECUTED'
 }
 
-enum TypeOfTaskEnum {
-  Default = 'DEFAULT',
-  EditConfirm = 'EDIT CONFIRMATION'
-}
-
 interface ITodoTask {
-  id: number;
+  id: Uuid;
   name: string;
   description: string;
   dateCreated: Date;
   dateEdited?: Date | null;
-  editing: boolean;
   status: StatusTodoListEnum;
-  typeOfTask: TypeOfTaskEnum;
+  editingTask: (payload: ITodoTaskUpdated, confirm?: boolean) => void;
+  markTaskAsExecuted(): void;
+}
+
+interface ITodoTaskUpdated {
+  name?: ITodoTask['name'];
+  description?: ITodoTask['description'];
 }
 
 interface ITodoList {
-  addNewTask(task: ITodoTask): void;
-  removeTask(taskId: number): void;
-  editingTask(taskId: number, updatedTask: Partial<ITodoTask>): void;
-  getInformationTask(taskId: number): ITodoTask | undefined;
-  getAllOfTasks(): ITodoTask[];
-  getTotalTasksCount(): number;
-  markTaskAsExecuted(taskId: number): void;
+  addNewTask: (name: string, description: string) => void;
+  removeTask: (taskId: Uuid) => ITodoTask;
+  editingTask: (taskId: Uuid, payload: ITodoTaskUpdated, confirm?: boolean) => ITodoTask;
+  getInformationTask: (taskId: Uuid) => ITodoTask | undefined;
+  getAllOfTasks: () => ITodoTask[];
+  getTotalTasksCount: () => number;
   getExecutedTaskCount(): number;
-  getTotalTasksCount(): number;
-  searchTasks(query: string): ITodoTask[];
-  sortTasks(by: 'status' | 'dateCreated'): ITodoTask[]
+}
+
+interface ISearchable {
+  searchByName: (name: string) => ITodoTask[];
+  searchByDescription: (description: string) => ITodoTask[];
+}
+
+interface ISortable {
+  sortByStatus: (status: StatusTodoListEnum) =>  ITodoTask[];
+  sortByDateCreated: () =>  ITodoTask[];
+}
+
+abstract class BaseTodoTask implements ITodoTask {
+  readonly id: Uuid = Math.random() * (100 - 0) + 0;
+  readonly dateCreated = new Date();
+
+  dateEdited?: Date | null = null;
+  status = StatusTodoListEnum.New;
+  
+  constructor(public name: string, public description: string) {}
+  
+  public abstract editingTask({ name, description }: ITodoTaskUpdated, confirm?: boolean): void;
+
+  public markTaskAsExecuted(): void {
+    this.status = StatusTodoListEnum.Executed;
+  }
+}
+
+class TodoTask extends BaseTodoTask {
+  public override editingTask({ name, description }: ITodoTaskUpdated): void {
+    if (name?.trim()) {
+      this.name = name;
+    }
+    if (description?.trim()) {
+      this.description = description;
+    }
+
+    this.dateEdited = new Date();
+  };
+}
+class TodoTaskConfirmed extends BaseTodoTask {
+  public override editingTask({ name, description }: ITodoTaskUpdated, confirm: boolean = false): void {
+    if (!confirm) {
+      throw new Error("Editing requires confirmation");
+    }
+    if (name?.trim()) {
+      this.name = name;
+    }
+    if (description?.trim()) {
+      this.description = description;
+    }
+
+    this.dateEdited = new Date();
+  }
 }
 
 class TodoList implements ITodoList {
   private tasks: ITodoTask[] = [];
-  private nextId: number = 1;
-
-  
+ 
   //Add a new task
-  public addNewTask(task: ITodoTask): void {
-    task.id = this.nextId++;
-    task.dateCreated = new Date();
-    task.dateEdited = null;
-    this.tasks.push(task)
+  public addNewTask(name: string, description: string): void {
+    if(!name.trim() || !description.trim()) {
+      throw new Error("Note can't be empty")
+    }
+    const task = new TodoTask(name, description);
+    this.tasks.push(task);
   };
   
   //Remove a task
-  public removeTask(taskId: number): void {
-    this.tasks = this.tasks.filter(item => item.id !== taskId)
+  public removeTask(taskId: Uuid): ITodoTask {
+    const taskIndex = this.findByIndex(taskId);
+    if(~~taskIndex){
+      throw new Error(`${taskId} isn't defined`)
+    }
+    const [removedTask] = this.tasks.splice(taskIndex, 1);
+    return removedTask;
   };
 
   // Editing a task  
-  public editingTask(taskId: number, updatedTask: Partial<ITodoTask>): void {
-    const task = this.tasks.find(task => task.id === taskId);
-    if (task) {
-      if (task.typeOfTask === TypeOfTaskEnum.EditConfirm) {
-        task.editing = true;
-      }
-      Object.assign(task, updatedTask);
-      task.dateEdited = new Date();
-      task.editing = false;
-    }
+  public editingTask(taskId: Uuid, payload: ITodoTaskUpdated, confirm: boolean = false): ITodoTask {
+    const taskIndex = this.findByIndex(taskId);
+    const task = this.tasks[taskIndex];
+    const oldTask = { ... task };
+    task.editingTask(payload, confirm);
+    return oldTask;
   };
 
+  private findByIndex(taskId: Uuid): number {
+    const taskIndex = this.tasks.findIndex((item) => (item.id = taskId));
+    if(~~taskIndex){
+      throw new Error(`${taskId} isn't defined`)
+    }
+    return taskIndex; 
+  }
+
   // Get all of information about some task  
-  public getInformationTask(taskId: number): ITodoTask | undefined {
-    return this.tasks.find(task => task.id === taskId);
+  public getInformationTask(taskId: number): ITodoTask {
+    const task = this.tasks[this.findByIndex(taskId)]
+    return task;
   };
   
   // Get all of tasks
@@ -85,110 +146,36 @@ class TodoList implements ITodoList {
 
   //Mark a task as executed
   public markTaskAsExecuted(taskId: number): void {
-    const task = this.tasks.find(task => task.id === taskId);
-    if(task) {
-      task.status = StatusTodoListEnum.Executed;
-    }
+    const task = this.tasks[this.findByIndex(taskId)];
+    task.markTaskAsExecuted();
   }
 
   //Count all of executed tasks
   public getExecutedTaskCount(): number{
-    return this.tasks.filter(task => task.status !== StatusTodoListEnum.Executed).length;
+    return this.tasks.filter(task => task.status === StatusTodoListEnum.Executed).length;
   }
 
   //Count all of tasks
   public getTotalTasksCount(): number {
     return this.tasks.length;
   }
+}
 
-  //Search tasks by name and description
-  public searchTasks(query: string): ITodoTask[] {
-    return this.tasks.filter(task =>
-      task.name.includes(query) || task.description.includes(query)
-    );
-  }
-
-  // Sort tasks by Status and created date
-  public sortTasks(by: 'status' | 'dateCreated'): ITodoTask[] {
-    return this.tasks.sort((a, b) => {
-      if (by === 'status') {
-        return a.status.localeCompare(b.status);
-      } else if (by === 'dateCreated') {
-        return a.dateCreated.getTime() - b.dateCreated.getTime();
-      }
-      return 0;
-    });
+class TodoListSearch extends TodoList implements ISearchable {
+  public searchByDescription (description: string): ITodoTask[] {
+    return this.getAllOfTasks().filter(task => task.description === description);
+  };
+  public searchByName (name: string): ITodoTask[] {
+    return this.getAllOfTasks().filter(task => task.name === name);
   }
 }
 
-const todoList = new TodoList();
-
-const task1: ITodoTask = {
-  id: 0,
-  name: "Task 1",
-  description: "Description 1",
-  dateCreated: new Date('2024-05-01'),
-  dateEdited: null,
-  editing: false,
-  status: StatusTodoListEnum.New,
-  typeOfTask: TypeOfTaskEnum.Default
-};
-
-const task2: ITodoTask = {
-  id: 0,
-  name: "Task 2",
-  description: "Description 2",
-  dateCreated: new Date('2024-02-01'),
-  dateEdited: null,
-  editing: false,
-  status: StatusTodoListEnum.Executed,
-  typeOfTask: TypeOfTaskEnum.EditConfirm
-};
-
-const task3: ITodoTask = {
-  id: 0,
-  name: "Task 3",
-  description: "Description 3",
-  dateCreated: new Date('2024-01-15'),
-  dateEdited: null,
-  editing: false,
-  status: StatusTodoListEnum.IsPerformed,
-  typeOfTask: TypeOfTaskEnum.Default
-};
-
-todoList.addNewTask(task1);
-todoList.addNewTask(task2);
-todoList.addNewTask(task3);
-
-console.log(todoList.getAllOfTasks());
-
-todoList.removeTask(task2.id);
-
-// Edit a task
-const updatedTask1: Partial<ITodoTask> = {
-  name: "Updated Task 1",
-  description: "Updated Description 1",
-  status: StatusTodoListEnum.IsPerformed
-};
-
-todoList.editingTask(task1.id, updatedTask1);
-
-const taskInfo = todoList.getInformationTask(task1.id);
-console.log(taskInfo);
-
-todoList.markTaskAsExecuted(task3.id);
-
-const executedTasksCount = todoList.getExecutedTaskCount();
-console.log(executedTasksCount);
-
-const searchResults = todoList.searchTasks("Updated");
-console.log(searchResults);
-
-const sortedByStatus = todoList.sortTasks('status');
-console.log(sortedByStatus);
-
-const sortedByDate = todoList.sortTasks('dateCreated');
-console.log(sortedByDate);
-
-
+class TodoListSort extends TodoList implements ISortable {
+  public sortByStatus (status: StatusTodoListEnum): ITodoTask[] {
+    return this.getAllOfTasks().filter(task => task.status === status);
+  };
+  public sortByDateCreated(): ITodoTask[] {
+    return this.getAllOfTasks().sort((a, b) => a.dateCreated.getTime() - b.dateCreated.getTime());
+  };
+}
 
